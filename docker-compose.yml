@@ -1,0 +1,34 @@
+version: "3"
+
+networks:
+  apisix_frontend:
+    name: apisix_frontend
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+          gateway: 172.20.0.1
+
+  apisix_backend:
+    name: apisix_backend
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+          gateway: 172.21.0.1
+
+  apisix_mgmt:
+    name: apisix_mgmt
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/24
+          gateway: 172.22.0.1
+
+  database_net:
+    name: database_net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.23.0.0/24
+          gateway: 172.23.0.1

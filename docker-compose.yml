@@ -1,0 +1,96 @@
+services:
+  # This service runs the backend app in the port 3170
+  hoppscotch-backend:
+    container_name: hoppscotch-backend
+    image: hoppscotch/hoppscotch-backend:2026.8.2
+    env_file:
+      - ./.env
+    restart: always
+    environment:
+      # Edit the below line to match your PostgresDB URL if you have an outside DB (make sure to update the .env file as well)
+      - DATABASE_URL=${DATABASE_URL}
+      - PORT=8080
+    volumes:
+      # Uncomment the line below when modifying code. Only applicable when using the "dev" target.
+      # - ./packages/hoppscotch-backend/:/usr/src/app
+      - /usr/src/app/node_modules/
+    # depends_on:
+    #   hoppscotch-db:
+    #     condition: service_healthy
+    # ports:
+    #   - "3180:${HOPP_ALTERNATE_PORT:-80}"
+    #   - "3170:3170"
+    networks:
+      - apisix_backend
+      - database_net
+
+  # The main hoppscotch app with integrated webapp server. This will be hosted at port 3000
+  # The webapp server will be accessible at port 3200
+  # NOTE: To do TLS or play around with how the app is hosted, you can look into the Caddyfile for
+  #       the SH admin dashboard server at packages/hoppscotch-selfhost-web/Caddyfile
+  hoppscotch-app:
+    container_name: hoppscotch-app
+    image: hoppscotch/hoppscotch-frontend:2026.8.2
+    env_file:
+      - ./.env
+    depends_on:
+      - hoppscotch-backend
+    # ports:
+    #   - "3080:${HOPP_ALTERNATE_PORT:-80}"
+    #   - "3000:3000"
+    #   - "3200:3200"
+    networks:
+      - apisix_frontend
+
+  # The Self Host dashboard for managing the app. This will be hosted at port 3100
+  # NOTE: To do TLS or play around with how the app is hosted, you can look into the Caddyfile for
+  #       the SH admin dashboard server at packages/hoppscotch-sh-admin/Caddyfile
+  hoppscotch-sh-admin:
+    container_name: hoppscotch-sh-admin
+    image: hoppscotch/hoppscotch-admin:2026.8.2
+    env_file:
+      - ./.env
+    depends_on:
+      - hoppscotch-backend
+    # ports:
+    #   - "3280:${HOPP_ALTERNATE_PORT:-80}"
+    #   - "3100:3100"
+    networks:
+      - apisix_frontend
+
+  # Auto-migration service - handles database migrations automatically
+  hoppscotch-migrate:
+    image: hoppscotch/hoppscotch-backend:2026.8.2
+    env_file:
+      - ./.env
+    # depends_on:
+    #   hoppscotch-db:
+    #     condition: service_healthy
+    command: sh -c "pnpm exec prisma migrate deploy"
+    networks:
+      - apisix_backend
+      - database_net
+
+  hoppscotch-proxy:
+    image: hoppscotch/proxyscotch:v0.1.4
+    container_name: hoppscotch-proxy
+    restart: always
+    environment:
+      # Restrict this to your actual Hoppscotch web UI domain to prevent public abuse
+      - PROXYSCOTCH_ALLOWED_ORIGINS=${PROXYSCOTCH_ALLOWED_ORIGINS}
+      # MUST be left blank so the proxy is allowed to hit internal Docker IP addresses
+      - PROXYSCOTCH_BANNED_OUTPUTS=
+      # MUST be left blank so the proxy can resolve your APISIX container name
+      - PROXYSCOTCH_BANNED_DESTS=
+    networks:
+      - apisix_frontend
+
+networks:
+  apisix_frontend:
+    external: true
+
+  apisix_backend:
+    external: true
+
+  database_net:
+    external: true

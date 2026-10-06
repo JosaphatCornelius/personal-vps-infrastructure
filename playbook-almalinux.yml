@@ -1,0 +1,149 @@
+- name: AlmaLinux Fresh Config
+  hosts: webservers
+  become: true
+  tasks:
+    - name: Update AlmaLinux Packages
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+        update_cache: true
+
+    - name: Setup Firewalld
+      ansible.builtin.package:
+        name: firewalld
+        state: present
+
+    - name: Start and Enable Firewalld Service
+      ansible.builtin.service:
+        name: firewalld
+        state: started
+        enabled: true
+
+    - name: Allow Required Service Permanently
+      ansible.posix.firewalld:
+        service: "{{ item }}"
+        state: enabled
+        permanent: true
+        immediate: true
+      loop:
+        - ssh
+        - http
+        - https
+
+- name: AlmaLinux Docker Setup
+  hosts: webservers
+  become: true
+  tasks:
+    - name: Install Pre-Requisite Packages
+      ansible.builtin.dnf:
+        name: dnf-plugins-core
+        state: present
+
+    - name: Add Docker CE Repository
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/centos/docker-ce.repo
+        dest: /etc/yum.repos.d/docker-ce.repo
+
+    - name: Install Docker Engine and Plugins
+      ansible.builtin.dnf:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: true
+
+    - name: Start and Enable Docker Service
+      ansible.builtin.systemd:
+        name: docker
+        state: started
+        enabled: true
+
+- name: AlmaLinux Create Users
+  hosts: webservers
+  become: true
+  tasks:
+    - name: Create Users
+      ansible.builtin.user:
+        name: "github-deploy"
+        state: present
+        shell: /bin/bash
+        create_home: true
+        groups:
+          - "docker"
+        append: true
+
+    - name: Add SSH Public Key for User
+      ansible.builtin.authorized_key:
+        user: "github-deploy"
+        state: present
+        key: "{{ lookup('file', '~/.ssh/github-deploy.pub') }}"
+
+- name: AlmaLinux Deploy Docker Compose Defaults
+  hosts: webservers
+  become: true
+  tasks:
+    - name: Pull Projects from Github
+      ansible.builtin.git:
+        repo: "{{ item.repo }}"
+        dest: "/opt/{{ item.folder }}"
+        version: main
+        update: true
+      loop:
+        - {
+            repo: "https://github.com/JosaphatCornelius/docker-networking",
+            folder: "docker-networking",
+          }
+        - {
+            repo: "https://github.com/JosaphatCornelius/gateway-and-monitoring",
+            folder: "gateway-and-monitoring",
+          }
+        - {
+            repo: "https://github.com/JosaphatCornelius/docker-compose-databases",
+            folder: "docker-compose-databases",
+          }
+
+    - name: Set Correct Permissions for Deployment User
+      ansible.builtin.file:
+        path: "/opt/{{ item.folder }}"
+        owner: github-deploy
+        group: docker
+        recurse: true
+      loop:
+        - { folder: "docker-networking" }
+        - { folder: "gateway-and-monitoring" }
+        - { folder: "docker-compose-databases" }
+
+    - name: Make the Networking Script Executable
+      ansible.builtin.file:
+        path: /opt/docker-networking/setup-networks.sh
+        mode: "0755"
+
+    - name: Execute Docker Networking Setup Script
+      ansible.builtin.command:
+        cmd: ./setup-networks.sh
+      args:
+        chdir: /opt/docker-networking
+
+    - name: Deploy Default Composes
+      community.docker.docker_compose_v2:
+        project_src: "/opt/{{ item.folder }}"
+        state: present
+        files:
+          - "{{ item.compose_file }}"
+      register: compose_output
+      loop:
+        - {
+            folder: "gateway-and-monitoring",
+            compose_file: "docker-compose.yml",
+          }
+        - {
+            folder: "docker-compose-databases/postgresql",
+            compose_file: "docker-compose.yml",
+          }
+
+    - name: Debug Compose Output
+      ansible.builtin.debug:
+        var: compose_output

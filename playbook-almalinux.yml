@@ -84,48 +84,39 @@
 - name: AlmaLinux Deploy Docker Compose Defaults
   hosts: webservers
   become: true
+  vars:
+    projects:
+      - gateway-and-monitoring
+      - docker-compose-databases
   tasks:
     - name: Pull Projects from Github
       ansible.builtin.git:
-        repo: "{{ item.repo }}"
-        dest: "/opt/{{ item.folder }}"
+        repo: "https://github.com/JosaphatCornelius/{{ item }}"
+        dest: "/opt/{{ item }}"
         version: main
         update: true
-      loop:
-        - {
-            repo: "https://github.com/JosaphatCornelius/docker-networking",
-            folder: "docker-networking",
-          }
-        - {
-            repo: "https://github.com/JosaphatCornelius/gateway-and-monitoring",
-            folder: "gateway-and-monitoring",
-          }
-        - {
-            repo: "https://github.com/JosaphatCornelius/docker-compose-databases",
-            folder: "docker-compose-databases",
-          }
+      loop: "{{ projects }}"
 
     - name: Set Correct Permissions for Deployment User
       ansible.builtin.file:
-        path: "/opt/{{ item.folder }}"
+        path: "/opt/{{ item }}"
         owner: github-deploy
         group: docker
         recurse: true
+      loop: "{{ projects }}"
+
+    - name: Create Docker Networks
+      community.docker.docker_network:
+        name: "{{ item.name }}"
+        driver: bridge
+        ipam_config:
+          - subnet: "{{ item.subnet }}"
+        state: present
       loop:
-        - { folder: "docker-networking" }
-        - { folder: "gateway-and-monitoring" }
-        - { folder: "docker-compose-databases" }
-
-    - name: Make the Networking Script Executable
-      ansible.builtin.file:
-        path: /opt/docker-networking/setup-networks.sh
-        mode: "0755"
-
-    - name: Execute Docker Networking Setup Script
-      ansible.builtin.command:
-        cmd: ./setup-networks.sh
-      args:
-        chdir: /opt/docker-networking
+        - { name: apisix_frontend, subnet: "172.20.0.0/24" }
+        - { name: apisix_backend, subnet: "172.21.0.0/24" }
+        - { name: apisix_mgmt, subnet: "172.22.0.0/24" }
+        - { name: database_net, subnet: "172.23.0.0/24" }
 
     - name: Deploy Default Composes
       community.docker.docker_compose_v2:

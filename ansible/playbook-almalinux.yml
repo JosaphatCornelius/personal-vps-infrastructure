@@ -2,15 +2,20 @@
   hosts: webservers
   become: true
   tasks:
-    - name: Update AlmaLinux Packages
+    - name: Apply OS Security Updates
       ansible.builtin.dnf:
         name: "*"
         state: latest
         update_cache: true
+        security: true
+        allowerasing: true
 
-    - name: Setup Firewalld
-      ansible.builtin.package:
-        name: firewalld
+    - name: Install Required Utilities and System Packages
+      ansible.builtin.dnf:
+        name:
+          - git
+          - firewalld
+          - dnf-plugins-core
         state: present
 
     - name: Start and Enable Firewalld Service
@@ -19,7 +24,7 @@
         state: started
         enabled: true
 
-    - name: Allow Required Service Permanently
+    - name: Allow Required Services Permanently
       ansible.posix.firewalld:
         service: "{{ item }}"
         state: enabled
@@ -34,15 +39,11 @@
   hosts: webservers
   become: true
   tasks:
-    - name: Install Pre-Requisite Packages
-      ansible.builtin.dnf:
-        name: dnf-plugins-core
-        state: present
-
     - name: Add Docker CE Repository
       ansible.builtin.get_url:
         url: https://download.docker.com/linux/centos/docker-ce.repo
         dest: /etc/yum.repos.d/docker-ce.repo
+        mode: "0644"
 
     - name: Install Docker Engine and Plugins
       ansible.builtin.dnf:
@@ -81,29 +82,34 @@
         state: present
         key: "{{ lookup('file', '~/.ssh/github-deploy.pub') }}"
 
-- name: AlmaLinux Deploy Docker Compose Defaults
+- name: AlmaLinux Deploy Docker Compose Infrastructure
   hosts: webservers
   become: true
-  vars:
-    projects:
-      - gateway-and-monitoring
-      - docker-compose-databases
+  vars_files:
+    - vars/secrets.yml
   tasks:
     - name: Pull Projects from Github
       ansible.builtin.git:
-        repo: "https://github.com/JosaphatCornelius/{{ item }}"
-        dest: "/opt/{{ item }}"
+        repo: "https://github.com/JosaphatCornelius/personal-vps-infrastructure"
+        dest: "/opt/personal-vps-infrastructure"
         version: main
         update: true
-      loop: "{{ projects }}"
 
     - name: Set Correct Permissions for Deployment User
       ansible.builtin.file:
-        path: "/opt/{{ item }}"
-        owner: github-deploy
+        path: "/opt/personal-vps-infrastructure"
         group: docker
         recurse: true
-      loop: "{{ projects }}"
+
+    - name: Deploy .env Files across Stacks
+      ansible.builtin.template:
+        src: templates/env.j2
+        dest: /opt/personal-vps-infrastructure/{{ item.folder }}/.env
+        mode: "0600"
+      loop:
+        - { folder: "gateway-and-monitoring" }
+        - { folder: "docker-compose-databases/postgresql" }
+        - { folder: "hoppscotch-api-client" }
 
     - name: Create Docker Networks
       community.docker.docker_network:
@@ -120,7 +126,7 @@
 
     - name: Deploy Default Composes
       community.docker.docker_compose_v2:
-        project_src: "/opt/{{ item.folder }}"
+        project_src: "/opt/personal-vps-infrastructure/{{ item.folder }}"
         state: present
         files:
           - "{{ item.compose_file }}"
@@ -132,6 +138,10 @@
           }
         - {
             folder: "docker-compose-databases/postgresql",
+            compose_file: "docker-compose.yml",
+          }
+        - {
+            folder: "hoppscotch-api-client",
             compose_file: "docker-compose.yml",
           }
 

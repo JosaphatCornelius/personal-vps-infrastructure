@@ -84,6 +84,7 @@ services:
       - PROXYSCOTCH_BANNED_DESTS=
     networks:
       - apisix_frontend
+      - apisix_backend
 
 networks:
   apisix_frontend:

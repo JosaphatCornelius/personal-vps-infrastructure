@@ -59,17 +59,18 @@ services:
       - apisix_frontend
 
   # Auto-migration service - handles database migrations automatically
-  hoppscotch-migrate:
-    image: hoppscotch/hoppscotch-backend:2026.8.2
-    env_file:
-      - ./.env
-    # depends_on:
-    #   hoppscotch-db:
-    #     condition: service_healthy
-    command: sh -c "pnpm exec prisma migrate deploy"
-    networks:
-      - apisix_backend
-      - database_net
+  # hoppscotch-migrate:
+  #   container_name: hoppscotch-migrate
+  #   image: hoppscotch/hoppscotch-backend:2026.8.2
+  #   env_file:
+  #     - ./.env
+  #   # depends_on:
+  #   #   hoppscotch-db:
+  #   #     condition: service_healthy
+  #   command: sh -c "pnpm exec prisma migrate deploy"
+  #   networks:
+  #     - apisix_backend
+  #     - database_net
 
   hoppscotch-proxy:
     image: hoppscotch/proxyscotch:v0.1.4

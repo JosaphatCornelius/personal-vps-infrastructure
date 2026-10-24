@@ -1,4 +1,4 @@
-# [Project Name]
+# personal-vps-infrastructure
 
 Build Status: Deployed
 

@@ -30,7 +30,7 @@ services:
     healthcheck:
       test: curl -k -f https://localhost:1443/api/open/health
     environment:
-      - MGT_PG=postgres://${EXT_DB_USER}:${EXT_DB_PASSWORD}@${EXT_DB_HOST}:5432/${EXT_DB_NAME}?sslmode=disable
+      - MGT_PG=postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}?sslmode=disable
       - MGT_GRPC_TOKEN=${MGT_GRPC_TOKEN:-}
       - MGT_BOOTSTRAP_TOKEN=${MGT_BOOTSTRAP_TOKEN:-}
       - MGT_BOOTSTRAP_WINDOW=${MGT_BOOTSTRAP_WINDOW:-}
@@ -94,7 +94,7 @@ services:
     image: ${IMAGE_PREFIX}/safeline-luigi${REGION}${ARCH_SUFFIX}${RELEASE}:${IMAGE_TAG}
     environment:
       - MGT_IP=${SUBNET_PREFIX}.4
-      - LUIGI_PG=postgres://${EXT_DB_USER}:${EXT_DB_PASSWORD}@${EXT_DB_HOST}:5432/${EXT_DB_NAME}?sslmode=disable
+      - LUIGI_PG=postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}?sslmode=disable
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ${SAFELINE_DIR}/resources/luigi:/app/data
@@ -135,7 +135,7 @@ services:
         max-size: "100m"
         max-file: "10"
     environment:
-      - DB_ADDR=postgres://${EXT_DB_USER}:${EXT_DB_PASSWORD}@${EXT_DB_HOST}:5432/${EXT_DB_NAME}?sslmode=disable
+      - DB_ADDR=postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}?sslmode=disable
     volumes:
       - ${SAFELINE_DIR}/resources/sock:/app/sock
       - ${SAFELINE_DIR}/resources/chaos:/app/chaos

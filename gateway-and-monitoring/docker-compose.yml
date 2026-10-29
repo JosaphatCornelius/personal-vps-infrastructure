@@ -81,6 +81,7 @@ services:
       - "./grafana_conf/provisioning:/etc/grafana/provisioning"
       - "./grafana_conf/dashboards:/var/lib/grafana/dashboards"
       - "./grafana_conf/config/grafana.ini:/etc/grafana/grafana.ini"
+      - grafana_data:/var/lib/grafana
     networks:
       apisix_mgmt:
 
@@ -108,3 +109,4 @@ volumes:
   etcd_data:
     driver: local
   prometheus_data:
+  grafana_data:

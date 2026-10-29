@@ -53,3 +53,7 @@ plugin_attr:
     export_addr:
       ip: "0.0.0.0"
       port: 9091
+  chaitin-waf:
+    nodes:
+      - host: "safeline-detector"
+        port: 8000

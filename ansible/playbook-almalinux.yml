@@ -60,7 +60,7 @@
           port = ssh
           filter = sshd
           backend = systemd
-          maxretry = 3
+          maxretry = 2
           bantime = 3600
       notify: Restart Fail2ban
 

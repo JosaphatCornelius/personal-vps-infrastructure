@@ -35,6 +35,47 @@
         - http
         - https
 
+- name: AlmaLinux Fail2ban Setup
+  hosts: webservers
+  become: true
+  tasks:
+    - name: Install EPEL Repository
+      ansible.builtin.dnf:
+        name: epel-release
+        state: present
+
+    - name: Install Fail2ban
+      ansible.builtin.dnf:
+        name: fail2ban
+        state: present
+        update_cache: true
+
+    - name: Configure Fail2ban SSH Jail
+      ansible.builtin.copy:
+        dest: /etc/fail2ban/jail.local
+        mode: "0644"
+        content: |
+          [sshd]
+          enabled = true
+          port = ssh
+          filter = sshd
+          backend = systemd
+          maxretry = 2
+          bantime = 3600
+      notify: Restart Fail2ban
+
+    - name: Start and Enable Fail2ban Service
+      ansible.builtin.systemd:
+        name: fail2ban
+        state: started
+        enabled: true
+
+  handlers:
+    - name: Restart Fail2ban
+      ansible.builtin.systemd:
+        name: fail2ban
+        state: restarted
+
 - name: AlmaLinux Docker Setup
   hosts: webservers
   become: true

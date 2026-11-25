@@ -16,6 +16,11 @@ discovery.relabel "containers" {
     regex         = "/(.*)"
     target_label  = "filename"
   }
+
+  rule {
+    target_label = "job"
+    replacement  = "varlogs"
+  }
 }
 
 loki.source.docker "containers" {

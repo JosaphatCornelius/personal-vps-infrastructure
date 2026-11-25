@@ -73,6 +73,37 @@ services:
     networks:
       apisix_mgmt:
 
+  loki:
+    image: grafana/loki:3.7.10
+    container_name: system-monitoring-loki
+    restart: always
+    command: -config.file=/etc/loki/loki.yaml
+    volumes:
+      - ./loki_conf/loki.yaml:/etc/loki/loki.yaml:ro
+      - loki_data:/loki
+    # ports:
+    #   - "3100:3100"
+    networks:
+      apisix_mgmt:
+
+  alloy:
+    image: grafana/alloy:v1.22.0
+    container_name: system-monitoring-alloy
+    restart: always
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./alloy_conf/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy_data:/var/lib/alloy/data
+    depends_on:
+      - loki
+    networks:
+      apisix_mgmt:
+
   grafana:
     image: grafana/grafana:13.2.3
     container_name: system-monitoring-grafana
@@ -115,3 +146,5 @@ volumes:
     driver: local
   prometheus_data:
   grafana_data:
+  loki_data:
+  alloy_data:

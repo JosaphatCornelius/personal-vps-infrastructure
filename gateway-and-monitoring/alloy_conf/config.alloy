@@ -23,7 +23,6 @@ discovery.relabel "containers" {
     target_label  = "filename"
   }
 
-  // Compose service name (e.g. "web", "nextjs"), only set if the container has one
   rule {
     source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
     regex         = "(.+)"
@@ -35,7 +34,7 @@ discovery.relabel "containers" {
     replacement  = "varlogs"
   }
 
-    rule {
+  rule {
     source_labels = ["container"]
     regex         = "system-monitoring-(loki|alloy)"
     action        = "drop"
@@ -45,6 +44,27 @@ discovery.relabel "containers" {
 loki.source.docker "containers" {
   host       = "unix:///var/run/docker.sock"
   targets    = discovery.relabel.containers.output
+  forward_to = [loki.process.filter.receiver]   // changed: go through the processor
+}
+
+loki.process "filter" {
+  // Join multi-line entries (indented continuation lines) for the .NET apps
+  stage.match {
+    selector = "{container=~\"your-dotnet-container-1|your-dotnet-container-2\"}"
+
+    stage.multiline {
+      firstline     = "^\\S"
+      max_wait_time = "3s"
+      max_lines     = 500
+    }
+  }
+
+  // Don't send backlog older than Loki accepts (avoids the 400 errors)
+  stage.drop {
+    older_than          = "24h"
+    drop_counter_reason = "too_old"
+  }
+
   forward_to = [loki.write.default.receiver]
 }
 

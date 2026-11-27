@@ -48,17 +48,12 @@ loki.source.docker "containers" {
 }
 
 loki.process "filter" {
-  // Join multi-line entries (indented continuation lines) for the .NET apps
-  stage.match {
-    selector = "{container=~\"your-dotnet-container-1|your-dotnet-container-2\"}"
-
-    stage.multiline {
-      firstline     = "^\\S"
-      max_wait_time = "3s"
-      max_lines     = 500
-    }
+  stage.multiline {
+    firstline     = "^\\S"
+    max_wait_time = "3s"
+    max_lines     = 500
   }
-
+  
   // Don't send backlog older than Loki accepts (avoids the 400 errors)
   stage.drop {
     older_than          = "24h"

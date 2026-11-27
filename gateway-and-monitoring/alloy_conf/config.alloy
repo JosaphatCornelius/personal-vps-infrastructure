@@ -61,8 +61,8 @@ loki.process "filter" {
   }
 
   stage.drop {
-    expression          = ".*msg=\"Plugin Request Completed\".*"
-    drop_counter_reason = "grafana_plugin_requests"
+    expression          = ".*logger=(plugin\\.loki|tsdb\\.loki)( .*|$)"
+    drop_counter_reason = "grafana_loki_plugin"
   }
 
   forward_to = [loki.write.default.receiver]

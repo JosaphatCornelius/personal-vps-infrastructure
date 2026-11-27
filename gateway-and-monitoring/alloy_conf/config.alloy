@@ -53,11 +53,16 @@ loki.process "filter" {
     max_wait_time = "3s"
     max_lines     = 500
   }
-  
+
   // Don't send backlog older than Loki accepts (avoids the 400 errors)
   stage.drop {
     older_than          = "24h"
     drop_counter_reason = "too_old"
+  }
+
+  stage.drop {
+    expression          = ".*msg=\"Plugin Request Completed\".*"
+    drop_counter_reason = "grafana_plugin_requests"
   }
 
   forward_to = [loki.write.default.receiver]

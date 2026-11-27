@@ -18,8 +18,27 @@ discovery.relabel "containers" {
   }
 
   rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    regex         = "(.+)"
+    target_label  = "filename"
+  }
+
+  // Compose service name (e.g. "web", "nextjs"), only set if the container has one
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    regex         = "(.+)"
+    target_label  = "service"
+  }
+
+  rule {
     target_label = "job"
     replacement  = "varlogs"
+  }
+
+    rule {
+    source_labels = ["container"]
+    regex         = "system-monitoring-(loki|alloy)"
+    action        = "drop"
   }
 }
 
